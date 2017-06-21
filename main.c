@@ -6,7 +6,7 @@
  */ 
 
 #include <avr/io.h>
-
+#define ticks(valor) (1/((valor*976)/100))/0.000004
 //ADC
 void ADC_init( void );
 uint16_t ADC_read( uint8_t adc );
@@ -22,7 +22,6 @@ void PWM_init( void );
 void PWM_OFF( void );
 void PWM_ON( void );
 uint8_t PWM_validate( uint8_t pwm );
-uint16_t PWM_value( uint8_t value );
 uint8_t PWM_valueValidate( uint8_t value );
 //STRINGS
 uint16_t atoi( char *str );
@@ -51,6 +50,7 @@ int main(void)
 {
 	uint16_t lectura;
 	uint8_t op,nbit, valor, pwm0,pwm1;
+	char pwmRead[5];
 
     ADC_init();
     PWM_init();
@@ -88,24 +88,23 @@ int main(void)
 				}
 				break;
 			case 3: 
-				if( PWM_validate(nbit)&&PWM_valueValidate(valor) )
+				if( PWM_validate(nbit) && PWM_valueValidate(valor) )
 				{
 					if(!TCCR0B)
 					{
 						PWM_ON();
+					}
+							
+					if(nbit)
+					{
+						pwm1 = valor;
+						OCR0B = ticks(valor);
 					}else
 					{
-						if(nbit)
-						{
-							pwm1 = valor;
-							OCR0B = PWM_value(valor);
-
-						}else
-						{
-							pwm0 = valor;
-							OCR0A = PWM_value(valor);
-						}
+						pwm0 = valor;
+						OCR0A = ticks(valor);
 					}
+					
 				}else
 				{
 					UART0_puts("\n\rError, por favor intentelo de nuevo.");
@@ -119,7 +118,16 @@ int main(void)
 						UART0_puts("\n\rError, PWM no encendido.");
 					}else
 					{
-
+						if( nbit )
+						{
+							itoa(pwmRead,pwm1,10);
+						}else
+						{
+							itoa(pwmRead,pwm0,10);
+						}
+							UART0_puts("\n\rEl pwm trabaja a: ");
+							UART0_puts(pwmRead);
+							UART0_puts("% \n\r");
 					}
 				}else
 				{
@@ -144,7 +152,6 @@ int main(void)
 		}
     }
 }
-void init_Variables( )
 
 //ADC 
 void ADC_init( void )
@@ -194,7 +201,7 @@ void PWM_init()
 {
 	DDRB = (1<<PB7); //PWM0
 	DDRG = (1<<PG5); //PWM1s
-	TCCR0A = (2<<COM0A0)|(2<<COM0B0)|(2<<WGM0);
+	TCCR0A = (2<<COM0A0)|(2<<COM0B0)|(2<<WGM00);
 }
 void PWM_ON( void )
 {
@@ -207,10 +214,6 @@ void PWM_OFF( void )
 uint8_t PWM_validate( uint8_t pwm)
 {
 	return(pwm == 1 || pwm == 0)? 1:0;
-}
-uint16_t PWM_value( uint8_t value )
-{
-	return (1/((value*976)/100))/(1/(16000000/64)) ;
 }
 uint8_t PWM_valueValidate( uint8_t value )
 {
